@@ -59,19 +59,9 @@ nn_model.apply(init_weights)
 # Load previous model if flag used
 if args.load:
     state_dict = torch.load(args.load)
-
-    # Modify weight decay
-    #state_dict['optimizer']['param_groups'][0]['weight_decay'] = 0
-
-    # Transfer loading
-    nn_model.load_state_dict(state_dict['model'], strict=False)
-    optimizer = torch.optim.Adam(nn_model.parameters(), lr=learning_rate)
-
-    # Load model
-    #nn_model.load_state_dict(state_dict['model'])
-    #optimizer.load_state_dict(state_dict['optimizer'])
-    print('Model loaded!')
-
+    nn_model.load_state_dict(state_dict['model'])
+    optimizer.load_state_dict(state_dict['optimizer'])
+    print('Model loaded!', args.load)
 model_num = 1
 
 # Function to save model
@@ -112,9 +102,6 @@ for epoch in range(max_epochs):
             print('Out of memory CUDA')
             continue
         out_lengths = batch['seq_lengths']
-
-        #print('Checking fwd tensors')
-        #print(len((note_out.isnan()).nonzero()), len((acc_out.isnan()).nonzero()), len((sym_out.isnan()).nonzero()))
 
         # Verifies correct lengths
         if batch_num == 0 and epoch == 0:
@@ -235,19 +222,6 @@ for epoch in range(max_epochs):
                              sym_out[:,:,active_indices].sum(dim=2) + \
                              torch.log(1 - torch.exp(sym_out[:,:,inactive_indices])).sum(dim=2)
 
-        '''
-        print('Checking CTC prob tensor')
-        print(len((probs.isnan()).nonzero()))
-        #print(torch.topk(probs, 1, largest=False)[0])
-        min_val, min_idx = torch.min(probs), torch.argmin(probs).item()
-        print(min_val, min_idx)
-        a = min_idx // (probs.shape[1] * probs.shape[2])
-        b = (min_idx % (probs.shape[1] * probs.shape[2])) // probs.shape[2]
-        c = (min_idx % (probs.shape[1] * probs.shape[2])) % probs.shape[2]
-        print(a,b,c)
-        print(probs[a,b,c])
-        '''
-
         # Update note targets
         note_targets = new_note_targets
         note_targets = torch.tensor(note_targets)
@@ -287,7 +261,7 @@ for epoch in range(max_epochs):
             save_model()   
             model_num += 1
 
-    # Print training epoch stats
+    # Print training epoch stats (NOT USED DUE TO SLOW DECODING)
     '''
     img_name = batch['names'][0]
     print('Train - Greedy SER at epoch %d: %f' % ((epoch+1), train_greedy_val_ed_len/train_greedy_val_len))
@@ -354,10 +328,9 @@ for epoch in range(max_epochs):
 
                     # Convert list of tensors to python to hash as tuple
                     seq_n = [s.item() for s in note_seq]
-                    seq_d = [s.item() for s in dur_seq]   # Subtract by 1 to remove the "symbol" neuron
+                    seq_d = [s.item() for s in dur_seq]
                     seq_a = [s.item() for s in acc_seq]
                     seq = seq_n + seq_d + seq_a
-                    #print(seq)
 
                     # Check if binary vector already accounted for
                     if tuple(seq) in unique_seqs:
@@ -403,8 +376,6 @@ for epoch in range(max_epochs):
             sym_out -= 0.0001
             #note_out = note_out - 0.0001
             #acc_out = acc_out - 0.0001
-            #sym_out = sym_out - 0.0001
-
 
             # Create probabilites for CTC (seq len, batch size, num seqs)
             probs = torch.zeros(note_out.shape[0], params['batch_size'], prev_idx, requires_grad=False).cuda()
@@ -440,6 +411,7 @@ for epoch in range(max_epochs):
                                 acc_out[:,:,:,BLANK_VAL_ACC].sum(dim=2) + \
                                 sym_out[:,:,active_indices].sum(dim=2) + \
                                 torch.log(1 - torch.exp(sym_out[:,:,inactive_indices])).sum(dim=2)
+
             # Update note targets
             note_targets = new_note_targets
             note_targets = torch.tensor(note_targets)
@@ -459,6 +431,7 @@ for epoch in range(max_epochs):
     print('Validation loss value at epoch %d: %f' % ((epoch+1),valid_loss/len(dataloader_valid)))
     valid_loss = 0
 
+    # (NOT CALCULATED DUE TO SLOW DECODING)
     '''
     print('LENGTH - Greedy SER at epoch %d: %f' % ((epoch+1), greedy_val_ed_len/greedy_val_len))
     print('LENGTH - Greedy sequence error rate at epugoch %d: %f' % ((epoch+1), (greedy_num_samples-greedy_num_correct_len)/greedy_num_samples))
@@ -469,6 +442,5 @@ for epoch in range(max_epochs):
     print('PITCH - Greedy Validation (', img_name, '):', greedy_preds_note[0])
     '''
 
-    #if (epoch + 1) % 50 == 0:
     save_model()   
     model_num += 1

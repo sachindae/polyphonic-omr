@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(description='Train model.')
 parser.add_argument('-corpus', dest='corpus', type=str, required=True, help='Path to the corpus.')
 parser.add_argument('-voc_p', dest='voc_p', type=str, required=True, help='Path to the pitch vocabulary file.')
 parser.add_argument('-voc_r', dest='voc_r', type=str, required=False, help='Path to the rhythm vocabulary file.')
-parser.add_argument('-l', dest='load', action="store_true", default=False, help='Indicate if loading saved model')
+parser.add_argument('-l', dest='load', type=str, required=False, help='Path to saved model to load from')
 args = parser.parse_args()
 
 # Load model architecture parameters
@@ -54,14 +54,10 @@ nn_model.apply(init_weights)
 
 # Load previous model if flag used
 if args.load:
-
-    state_dict = torch.load('models/latest_model3.pt')
-
+    state_dict = torch.load(args.load)
     nn_model.load_state_dict(state_dict['model'])
     optimizer.load_state_dict(state_dict['optimizer'])
-
-    print('Model loaded!')
-
+    print('Model loaded!', args.load)
 model_num = 1
 
 # Function to save model
@@ -138,6 +134,7 @@ for epoch in range(max_epochs):
         train_loss += loss.item()
 
         # Decode model output to get length/pitch prediction
+        '''
         greedy_preds_len = utils.greedy_decode(length_out, out_lengths[0])
         greedy_preds_pitch = utils.greedy_decode(pitch_out, out_lengths[0])
 
@@ -148,6 +145,7 @@ for epoch in range(max_epochs):
             train_greedy_val_len += target_lengths[i]
             train_greedy_num_correct_len += int(ed == 0)
             train_greedy_num_samples += 1
+        '''
 
         # Show training loss every 500 batches
         if (batch_num) % 500 == 0:
@@ -164,9 +162,9 @@ for epoch in range(max_epochs):
 
     # Print training epoch stats
     img_name = batch['names'][0]
-    print('Train - Greedy SER at epoch %d: %f' % ((epoch+1), train_greedy_val_ed_len/train_greedy_val_len))
-    print('Train - Greedy sequence error rate at epoch %d: %f' % ((epoch+1), (train_greedy_num_samples-train_greedy_num_correct_len)/train_greedy_num_samples))
-    print('Train - Greedy (', img_name, '):', greedy_preds_len[0])
+    #print('Train - Greedy SER at epoch %d: %f' % ((epoch+1), train_greedy_val_ed_len/train_greedy_val_len))
+    #print('Train - Greedy sequence error rate at epoch %d: %f' % ((epoch+1), (train_greedy_num_samples-train_greedy_num_correct_len)/train_greedy_num_samples))
+    #print('Train - Greedy (', img_name, '):', greedy_preds_len[0])
 
     # Validation statistics
     valid_loss = 0       
@@ -213,6 +211,7 @@ for epoch in range(max_epochs):
 
             valid_loss += loss.item()
 
+            '''
             # Decode the model output to its prediction (greedy search) - LENGTH
             greedy_preds_len = utils.greedy_decode(length_out, out_lengths[0])
 
@@ -232,12 +231,14 @@ for epoch in range(max_epochs):
                 ed = utils.edit_distance(pred, pitch_targets[i][:target_lengths[i]].tolist())
                 greedy_val_ed_note += ed
                 greedy_num_correct_note += int(ed == 0)
+            '''
 
             img_name = batch['names'][0]
 
     # Print validation stats
     print('Validation loss value at epoch %d: %f' % ((epoch+1),valid_loss/len(dataloader_valid)))
 
+    '''
     print('LENGTH - Greedy SER at epoch %d: %f' % ((epoch+1), greedy_val_ed_len/greedy_val_len))
     print('LENGTH - Greedy sequence error rate at epoch %d: %f' % ((epoch+1), (greedy_num_samples-greedy_num_correct_len)/greedy_num_samples))
     print('LENGTH - Greedy Validation (', img_name, '):', greedy_preds_len[0])
@@ -245,6 +246,7 @@ for epoch in range(max_epochs):
     print('PITCH - Greedy SER at epoch %d: %f' % ((epoch+1), greedy_val_ed_note/greedy_val_len))
     print('PITCH - Greedy sequence error rate at epoch %d: %f' % ((epoch+1), (greedy_num_samples-greedy_num_correct_note)/greedy_num_samples))
     print('PITCH - Greedy Validation (', img_name, '):', greedy_preds_note[0])
+    '''
 
     #if (epoch + 1) % 50 == 0:
     save_model()   

@@ -275,6 +275,10 @@ for file_name in os.listdir(args.image):
                     pitch_s += '+' + ' '
                     rhythm_s += '+' + ' '
 
+                # Remove last '+' char and space from predictions
+                pitch_s = pitch_s[:-2] 
+                rhythm_s = rhythm_s[:-2] 
+
                 output_file_p = os.path.join(args.out_p, img_names[k])
                 output_file_r = os.path.join(args.out_r, img_names[k])
 

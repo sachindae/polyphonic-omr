@@ -119,11 +119,9 @@ class PolyphonicDataset(Dataset):
             images.append(utils.normalize(sample_img))
             img_names.append(sample)
             
-
             # Modify sample name if needed for loading label (1 -> 01, 001)
             
-            # PRINTED VERSION (Polyphonic, PrIMuS)
-            
+            # Polyphonic dataset
             hw_data = False
             sample_id = sample.split('-')[0]
             sample_num = sample.split('-')[1]
@@ -132,15 +130,6 @@ class PolyphonicDataset(Dataset):
             elif sample_num.startswith('0'):
                 sample_num = sample_num[1:]
             sample = sample_id + '-' + sample_num + '.semantic'
-            
-
-            # HANDWRITTEN VERSION (musicma_abaro)
-            #hw_data = True
-            #sample = sample + '.txt'
-            
-            # SOUNDING SPIRIT DATA
-            #hw_data = False
-            #sample = sample + '.semantic'
 
             # Label loading
             if self.using_split_vocab:
@@ -174,11 +163,7 @@ class PolyphonicDataset(Dataset):
                 except IndexError and ValueError:
                     pass
 
-
-                # Append labels as a pair (note, length)
-                #print(sample_name)
-                #print(note_seq)
-                #print(length_seq)
+                # Append labels
                 labels_note.append([self.note2idx[sym] for sym in note_seq])
                 labels_length.append([self.length2idx[sym] for sym in length_seq])
 
@@ -199,7 +184,7 @@ class PolyphonicDataset(Dataset):
                 note_file.close()
 
                 # Append label
-                labels_note.append([self.note2idx[sym] for sym in note_seq])
+                labels_note.append([self.note2idx[sym.split('_dup')[0]] for sym in note_seq])
 
             # Convert to batch if correct amount
             if len(images) == params['batch_size']:
@@ -237,6 +222,9 @@ class PolyphonicDataset(Dataset):
                     'names': img_names,
                 }
 
+                #print(labels_note[-1])
+                #print(labels_length[-1])
+
                 # Append sample dictionary
                 self.samples.append(s)
 
@@ -248,24 +236,7 @@ class PolyphonicDataset(Dataset):
                 
                 # For tracking status of loading in data
                 if len(self.samples) % 1000 == 0:
-                    print(len(self.samples))
-
-                break
-                '''
-                break
-                if len(self.samples) == 10:
-                    break
-
-                if len(self.samples) == 270 and set_type == 'train':
-                    break
-
-                if len(self.samples) == 30 and set_type == 'valid':
-                    break
-
-                #if len(self.samples) == 360:
-                #    break
-                '''
-                          
+                    print(len(self.samples))      
 
         print('Number of samples:',len(self.samples),'- Type:', set_type)
 

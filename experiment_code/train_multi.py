@@ -61,7 +61,7 @@ if args.load:
     state_dict = torch.load(args.load)
     nn_model.load_state_dict(state_dict['model'])
     optimizer.load_state_dict(state_dict['optimizer'])
-    print('Model loaded!')
+    print('Model loaded!', args.load)
 model_num = 1
 
 # Function to save model
@@ -96,48 +96,49 @@ for epoch in range(max_epochs):
         optimizer.zero_grad()
 
         # Forward pass
-        pitch_outs, length_outs = nn_model(batch['inputs'][0].to(device))
         try:
             pitch_outs, length_outs = nn_model(batch['inputs'][0].to(device))
+
+            # Get output lengths and concat to send to batchified CTC
+            out_lengths = batch['seq_lengths']
+            out_lengths = torch.cat((max_chord_stack*[out_lengths]), 1)
+
+            # Concat the pitch_outs and length_outs
+            pitch_outs = torch.cat((pitch_outs),1)
+            length_outs = torch.cat((length_outs),1)
+
+            # Verifies correct lengths
+            if batch_num == 0 and epoch == 0:
+                print('Shapes:',pitch_outs.shape, out_lengths[:batch['seq_lengths'].shape[0]])
+            
+            # Get targets
+            pitch_targets, length_targets = batch['targets']
+            target_lengths = torch.zeros(len(pitch_targets), dtype=torch.int32)
+
+            # Pad targets and get target lengths
+            max_len_target = 0
+            for t in pitch_targets:
+                max_len_target = max(max_len_target, len(t[0]))
+            for i in range(len(pitch_targets)):
+                target_lengths[i] = len(pitch_targets[i][0])
+                while len(pitch_targets[i][0]) < max_len_target:
+                    for j in range(len(pitch_targets[i])):
+                        pitch_targets[i][j].append(BLANK_VAL_NOTE)
+                        length_targets[i][j].append(BLANK_VAL_LENGTH)
+
+            # Concat target lenghts to send to batchified CTC
+            target_lengths = torch.cat((max_chord_stack*[target_lengths]))
+
+            # (batch, max_chord_stacks, len) -> (max_chord_stacks * batch, len)
+            pitch_targets = torch.tensor(pitch_targets)
+            length_targets = torch.tensor(length_targets)
+            pitch_targets = pitch_targets.reshape((pitch_targets.shape[0]*pitch_targets.shape[1], pitch_targets.shape[2]))
+            length_targets = length_targets.reshape((length_targets.shape[0]*length_targets.shape[1], length_targets.shape[2]))   
+
         except RuntimeError:
-            print('Out of memory CUDA')
+            print('Out of memory CUDA, train')
+            torch.cuda.empty_cache()
             continue
-
-        # Get output lengths and concat to send to batchified CTC
-        out_lengths = batch['seq_lengths']
-        out_lengths = torch.cat((max_chord_stack*[out_lengths]), 1)
-
-        # Concat the pitch_outs and length_outs
-        pitch_outs = torch.cat((pitch_outs),1)
-        length_outs = torch.cat((length_outs),1)
-
-        # Verifies correct lengths
-        if batch_num == 0 and epoch == 0:
-            print('Shapes:',pitch_outs.shape, out_lengths[:batch['seq_lengths'].shape[0]])
-        
-        # Get targets
-        pitch_targets, length_targets = batch['targets']
-        target_lengths = torch.zeros(len(pitch_targets), dtype=torch.int32)
-
-        # Pad targets and get target lengths
-        max_len_target = 0
-        for t in pitch_targets:
-            max_len_target = max(max_len_target, len(t[0]))
-        for i in range(len(pitch_targets)):
-            target_lengths[i] = len(pitch_targets[i][0])
-            while len(pitch_targets[i][0]) < max_len_target:
-                for j in range(len(pitch_targets[i])):
-                    pitch_targets[i][j].append(BLANK_VAL_NOTE)
-                    length_targets[i][j].append(BLANK_VAL_LENGTH)
-
-        # Concat target lenghts to send to batchified CTC
-        target_lengths = torch.cat((max_chord_stack*[target_lengths]))
-
-        # (batch, max_chord_stacks, len) -> (max_chord_stacks * batch, len)
-        pitch_targets = torch.tensor(pitch_targets)
-        length_targets = torch.tensor(length_targets)
-        pitch_targets = pitch_targets.reshape((pitch_targets.shape[0]*pitch_targets.shape[1], pitch_targets.shape[2]))
-        length_targets = length_targets.reshape((length_targets.shape[0]*length_targets.shape[1], length_targets.shape[2]))   
 
         # Reshape pitch targets to match output tensor order
         permutation = [(i//params['batch_size']) + (i%params['batch_size'])*max_chord_stack for i in range(pitch_targets.shape[0])]
@@ -167,7 +168,8 @@ for epoch in range(max_epochs):
         try:
             loss.backward()   
         except RuntimeError:
-            print('Out of memory CUDA')
+            print('Out of memory CUDA, train loss')
+            torch.cuda.empty_cache()
             continue
 
         optimizer.step()
@@ -234,7 +236,8 @@ for epoch in range(max_epochs):
             try:
                 pitch_outs, length_outs = nn_model(batch['inputs'][0].to(device))
             except RuntimeError:
-                print('Out of memory CUDA')
+                print('Out of memory CUDA validation')
+                torch.cuda.empty_cache()
                 continue
 
             # Get output lengths and concat to send to batchified CTC

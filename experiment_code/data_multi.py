@@ -83,22 +83,11 @@ class PolyphonicDataset(Dataset):
         # Create batches while going through each
         for sample in sample_list:
 
-            # Non-cached version, uses way less RAM, slower
-            '''
-            images.append(sample)
-            if len(images) == params['batch_size']:
-                self.samples.append(images)
-                images = []
-            '''
-
-            # Cached dataloader, loads all data into memory
-
             # Image preprocessing
             sample_name = img_dir + sample + '.png'
 
             # Deal with alpha (transparent PNG) - POLYPHONIC DATASET IMAGES
             sample_img = cv2.imread(os.path.join(directory, sample_name), cv2.IMREAD_UNCHANGED)
-            #print(sample_img.shape, sample_img.size)
             try:
                 if sample_img.shape[2] == 4:     # we have an alpha channel
                     a1 = ~sample_img[:,:,3]        # extract and invert that alpha
@@ -219,14 +208,6 @@ class PolyphonicDataset(Dataset):
                             new_pitch_seq[k].append('noNote')
                             k += 1
 
-                '''
-                print('Stacks')
-                for l,p in zip(new_length_seq[:3], new_pitch_seq[:3]):
-                    print(len(l),len(p))
-                    print(l)
-                    print(p)
-                '''
-
                 try:
                     labels_note.append([[self.note2idx[sym] for sym in pitch_seq] for pitch_seq in new_pitch_seq])
                 except KeyError:
@@ -308,22 +289,7 @@ class PolyphonicDataset(Dataset):
                 # For tracking status of loading in data
                 if len(self.samples) % 1000 == 0:
                     print(len(self.samples))
-                break
-                '''
-                break
-                #if len(self.samples) == 10:
-                #    break
-
-                if len(self.samples) == 1 and set_type == 'train':
-                    break
-
-                if len(self.samples) == 10 and set_type == 'valid':
-                    break
-
-                #if len(self.samples) == 360:
-                #    break
-                '''
-                          
+                              
 
         print('Number of samples:',len(self.samples),'- Type:', set_type)
 

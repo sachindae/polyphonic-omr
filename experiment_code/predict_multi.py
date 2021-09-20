@@ -14,12 +14,11 @@ print('Using',device)
 
 # Parsing stuff
 parser = argparse.ArgumentParser(description='Decode a music score image with a trained model (CTC).')
-parser.add_argument('-image',  dest='image', type=str, required=True, help='Path to the input image/dir.')
+parser.add_argument('-images',  dest='images', type=str, required=True, help='Path to the input image dir.')
 parser.add_argument('-model', dest='model', type=str, required=True, help='Path to the trained model.')
 parser.add_argument('-voc_p', dest='voc_p', type=str, required=True, help='Path to the vocabulary file for pitch.')
 parser.add_argument('-voc_r', dest='voc_r', type=str, required=True, help='Path to the vocabulary file for rhythm.')
 parser.add_argument('-p', dest='p', action="store_true", default=False, help='Indicate if outputting rhythm or pitch prediction sequence (false = rhythm)')
-parser.add_argument('-primus', dest='primus', action="store_true", default=False, help='Indicate if PrIMuS image (different preprocessing)')
 parser.add_argument('-out', dest='out_dir', type=str, default='-d' in sys.argv, help='Directory to output predictions to')
 parser.add_argument('-list', dest='list', type=str, default=False, help='Directory to list of files to check from directory')
 args = parser.parse_args()
@@ -93,14 +92,16 @@ width_reduction = 1
 for i in range(params['conv_blocks']):
     width_reduction = width_reduction * params['conv_pooling_size'][i][1]
 
+num_preds = 0
+
 # Read through directory if passed in
-for file_name in os.listdir(args.image):
+for file_name in os.listdir(args.images):
 
     # Check if in list (if relevant)
     if args.list and file_name.split('.')[0] not in files or not file_name.endswith('.png'):
         continue
 
-    img_name = os.path.join(args.image, file_name)
+    img_name = os.path.join(args.images, file_name)
 
     # Preprocess image
     image = cv2.imread(img_name, cv2.IMREAD_UNCHANGED)
@@ -180,6 +181,7 @@ for file_name in os.listdir(args.image):
                         if i < len(decoded_preds[k+j]) and decoded_preds[k+j][i] != 'noNote':
                             string_pred += decoded_preds[k+j][i] + ' '
                     string_pred += '+' + ' '
+                string_pred = string_pred[:-2] # Remove last '+' char and space from prediction
                 output_file = os.path.join(args.out_dir, img_names[img_idx].split('.')[0] + '.semantic')
                 write_output(string_pred, output_file) 
 
@@ -189,4 +191,6 @@ for file_name in os.listdir(args.image):
             lengths = []
             images = [] 
 
-print('Number of files predicted:', len(files))
+            num_preds += params['batch_size']
+
+print('Number of files predicted:', num_preds)

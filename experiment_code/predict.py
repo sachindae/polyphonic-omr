@@ -14,12 +14,11 @@ print('Using',device)
 
 # Parsing stuff
 parser = argparse.ArgumentParser(description='Decode a music score image with a trained model (CTC).')
-parser.add_argument('-image',  dest='image', type=str, required=True, help='Path to the input image/dir.')
+parser.add_argument('-images',  dest='image', type=str, required=True, help='Path to the input image/dir.')
 parser.add_argument('-model', dest='model', type=str, required=True, help='Path to the trained model.')
 parser.add_argument('-voc_p', dest='voc_p', type=str, required=True, help='Path to the vocabulary file for pitch.')
 parser.add_argument('-voc_r', dest='voc_r', type=str, required=True, help='Path to the vocabulary file for rhythm.')
 parser.add_argument('-p', dest='p', action="store_true", default=False, help='Indicate if outputting rhythm or pitch prediction sequence (false = rhythm)')
-parser.add_argument('-primus', dest='primus', action="store_true", default=False, help='Indicate if PrIMuS image (different preprocessing)')
 parser.add_argument('-list', dest='list', type=str, default=False, help='Directory to list of files to check from directory')
 parser.add_argument('-out', dest='out_dir', type=str, default='-d' in sys.argv, help='Directory to output predictions to')
 args = parser.parse_args()

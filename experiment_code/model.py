@@ -332,7 +332,7 @@ def default_model_params():
     params = dict()
     params['img_height'] = 128
     params['img_width'] = None
-    params['batch_size'] = 16
+    params['batch_size'] = 12
     params['img_channels'] = 1
     params['conv_blocks'] = 4
     params['conv_filter_n'] = [32, 64, 128, 256]
